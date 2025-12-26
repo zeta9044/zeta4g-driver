@@ -253,6 +253,9 @@ impl BoltClient {
     ) -> BoltResult<BoltQueryResult> {
         self.ensure_ready()?;
 
+        // Remember if we're in a transaction to restore state after streaming
+        let in_transaction = self.state == BoltClientState::InTransaction;
+
         // Build RUN message
         let mut run = RunMessage::new(query).with_parameters(parameters);
         if let Some(db) = database.or(self.database.as_deref()) {
@@ -300,7 +303,12 @@ impl BoltClient {
                     result.bookmark = success.bookmark().map(String::from);
                     result.database = success.db().map(String::from);
                     result.stats = success.stats().cloned();
-                    self.state = BoltClientState::Ready;
+                    // Restore state: InTransaction if we were in a tx, Ready otherwise
+                    self.state = if in_transaction {
+                        BoltClientState::InTransaction
+                    } else {
+                        BoltClientState::Ready
+                    };
                     break;
                 }
                 BoltResponse::Failure(failure) => {

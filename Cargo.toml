@@ -1,6 +1,6 @@
 [package]
 name = "zeta4g-driver"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["Kangyou Choi <zeta9044@gmail.com>"]
 description = "Rust driver for Zeta4G graph database with Bolt protocol support"
