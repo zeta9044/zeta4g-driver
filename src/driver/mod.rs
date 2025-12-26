@@ -1,64 +1,70 @@
-//! Driver Module
+//! # Driver Module
 //!
-//! Step 9: 클라이언트 SDK (Rust 드라이버)
+//! Core driver implementation for Zeta4G graph database.
 //!
-//! # Milestones
+//! This module provides the primary API for connecting to and interacting with
+//! Zeta4G databases using the Bolt protocol.
 //!
-//! - M9.1: Rust 드라이버 (Driver, Config, AuthToken)
-//! - M9.2: 연결 풀링 (ConnectionPool, PoolConfig)
-//! - M9.3: 트랜잭션 API (Transaction, TransactionConfig)
-//! - M9.4: 세션 관리 (Session, SessionConfig, Bookmark)
-//! - M9.5: 라우팅 드라이버 (RoutingDriver, RoutingTable)
-//! - M9.6: 리액티브 스트림 (tokio-stream 기반)
+//! ## Core Types
 //!
-//! # Example
+//! - [`Driver`] - Main entry point for database connections
+//! - [`Session`] - Logical container for database operations
+//! - [`Transaction`] - Explicit transaction control
+//! - [`Record`] - Single row in a query result
+//! - [`Value`] - Type-safe representation of database values
 //!
-//! ```ignore
-//! use zeta4g::driver::{Driver, AuthToken, SessionConfig};
+//! ## Quick Start
 //!
-//! // 단일 서버 드라이버 (bolt://)
+//! ```rust,no_run
+//! use zeta4g_driver::{Driver, AuthToken, SessionConfig};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create driver
 //! let driver = Driver::new("bolt://localhost:7687", AuthToken::basic("zeta4g", "password"))?;
 //!
-//! // 세션 생성
+//! // Create session
 //! let session = driver.session(SessionConfig::default())?;
 //!
-//! // 쿼리 실행
+//! // Run query
 //! let result = session.run("MATCH (n) RETURN n LIMIT 10", None).await?;
 //! for record in result {
 //!     println!("{:?}", record);
 //! }
 //!
-//! // 트랜잭션
-//! let tx = session.begin_transaction(None).await?;
-//! tx.run("CREATE (n:Person {name: $name})", params!{"name" => "Alice"}).await?;
-//! tx.commit().await?;
-//!
-//! // 세션 닫기
+//! // Clean up
 //! session.close().await?;
 //! driver.close().await?;
+//! # Ok(())
+//! # }
 //! ```
 //!
-//! # Routing Driver Example
+//! ## Transaction Example
 //!
-//! ```ignore
-//! use zeta4g::driver::routing::{RoutingDriver, RoutingPolicy};
-//! use zeta4g::driver::{AuthToken, SessionConfig, AccessMode};
+//! ```rust,no_run
+//! use zeta4g_driver::{Driver, AuthToken, SessionConfig};
+//! use std::collections::HashMap;
 //!
-//! // 라우팅 드라이버 (zeta4g://) - 클러스터용
-//! let driver = RoutingDriver::new(
-//!     "zeta4g://server1:7687,server2:7687",
-//!     AuthToken::basic("admin", "password")
-//! )?;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # let driver = Driver::new("bolt://localhost:7687", AuthToken::basic("u", "p"))?;
+//! # let session = driver.session(SessionConfig::default())?;
+//! // Begin transaction
+//! let mut tx = session.begin_transaction(None).await?;
 //!
-//! // 읽기 세션 (팔로워로 자동 라우팅)
-//! let session = driver.session(
-//!     SessionConfig::builder()
-//!         .with_default_access_mode(AccessMode::Read)
-//!         .build()
-//! )?;
+//! // Execute queries within transaction
+//! tx.run("CREATE (n:Person {name: 'Alice'})", None).await?;
+//! tx.run("CREATE (n:Person {name: 'Bob'})", None).await?;
 //!
-//! driver.close().await?;
+//! // Commit transaction
+//! tx.commit().await?;
+//! # Ok(())
+//! # }
 //! ```
+//!
+//! ## Submodules
+//!
+//! - [`routing`] - Cluster routing support for high availability
+//! - [`reactive`] - Reactive stream support using tokio-stream
+//! - [`bolt`] - Low-level Bolt client implementation
 
 pub mod bolt;
 pub mod reactive;

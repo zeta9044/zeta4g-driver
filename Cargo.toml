@@ -1,14 +1,21 @@
 [package]
 name = "zeta4g-driver"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Kangyou Choi <zeta9044@gmail.com>"]
 description = "Rust driver for Zeta4G graph database with Bolt protocol support"
 license = "MIT"
 repository = "https://github.com/zeta9044/zeta4g-driver"
+documentation = "https://docs.rs/zeta4g-driver"
+homepage = "https://github.com/zeta9044/zeta4g-driver"
 keywords = ["graph", "database", "bolt", "driver", "cypher"]
 categories = ["database"]
 readme = "README.md"
+rust-version = "1.70"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 # Async runtime
