@@ -84,13 +84,14 @@ impl BoltConnection {
         let mut handshake_buf = [0u8; 20];
         handshake_buf[0..4].copy_from_slice(&BOLT_MAGIC);
 
-        // Write version proposals (4 bytes each, big-endian: range, minor, major, 0)
+        // Write version proposals (4 bytes each, big-endian: 0x00_MM_mm_RR)
+        // where MM=major, mm=minor, RR=range
         for (i, (major, minor)) in SUPPORTED_VERSIONS.iter().enumerate() {
             let offset = 4 + i * 4;
-            handshake_buf[offset] = 0;      // range (0 for single version)
-            handshake_buf[offset + 1] = *minor;
-            handshake_buf[offset + 2] = *major;
-            handshake_buf[offset + 3] = 0;  // reserved
+            handshake_buf[offset] = 0;      // reserved
+            handshake_buf[offset + 1] = *major;
+            handshake_buf[offset + 2] = *minor;
+            handshake_buf[offset + 3] = 0;  // range (0 for single version)
         }
 
         // Send handshake
@@ -106,9 +107,9 @@ impl BoltConnection {
             .await
             .map_err(|e| BoltError::Connection(format!("Handshake read failed: {}", e)))?;
 
-        // Parse version response (format: 0, minor, major, 0)
-        let major = response[2];
-        let minor = response[1];
+        // Parse version response (format: 0x00_MM_mm_RR where MM=major, mm=minor, RR=range)
+        let major = response[1];
+        let minor = response[2];
 
         if major == 0 && minor == 0 {
             self.state = BoltConnectionState::Failed;
@@ -250,33 +251,34 @@ mod tests {
     #[test]
     fn test_handshake_message_format() {
         // Test that we build correct handshake message
+        // Format: 0x00_MM_mm_RR (big-endian) where MM=major, mm=minor, RR=range
         let mut buf = [0u8; 20];
         buf[0..4].copy_from_slice(&BOLT_MAGIC);
 
         for (i, (major, minor)) in SUPPORTED_VERSIONS.iter().enumerate() {
             let offset = 4 + i * 4;
-            buf[offset] = 0;
-            buf[offset + 1] = *minor;
-            buf[offset + 2] = *major;
-            buf[offset + 3] = 0;
+            buf[offset] = 0;      // reserved
+            buf[offset + 1] = *major;
+            buf[offset + 2] = *minor;
+            buf[offset + 3] = 0;  // range
         }
 
         // Verify magic
         assert_eq!(&buf[0..4], &BOLT_MAGIC);
 
         // Verify first version (5.0)
-        assert_eq!(buf[4], 0);   // range
-        assert_eq!(buf[5], 0);   // minor
-        assert_eq!(buf[6], 5);   // major
-        assert_eq!(buf[7], 0);   // reserved
+        assert_eq!(buf[4], 0);   // reserved
+        assert_eq!(buf[5], 5);   // major
+        assert_eq!(buf[6], 0);   // minor
+        assert_eq!(buf[7], 0);   // range
     }
 
     #[test]
     fn test_version_response_parsing() {
-        // Test parsing version response
-        let response = [0u8, 0, 4, 0]; // Bolt 4.0
-        let major = response[2];
-        let minor = response[1];
+        // Test parsing version response (format: 0x00_MM_mm_RR)
+        let response = [0u8, 4, 0, 0]; // Bolt 4.0 = [reserved, major, minor, range]
+        let major = response[1];
+        let minor = response[2];
         assert_eq!(major, 4);
         assert_eq!(minor, 0);
     }
